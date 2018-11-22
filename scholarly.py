@@ -41,6 +41,7 @@ _EMAILAUTHORRE = r'Verified email at '
 
 _SESSION = requests.Session()
 _PAGESIZE = 100
+_AUTHOR_CONECTOR = ', ' #' and '
 
 
 def _handle_captcha(url):
@@ -123,41 +124,45 @@ class Publication(object):
     """Returns an object for a single publication"""
     def __init__(self, __data, pubtype=None):
         self.bib = dict()
-        self.source = pubtype
-        if self.source == 'citations':
-            self.bib['title'] = __data.find('a', class_='gsc_a_at').text
-            self.id_citations = re.findall(_CITATIONPUBRE, __data.find('a', class_='gsc_a_at')['data-href'])[0]
-            citedby = __data.find(class_='gsc_a_ac')
-            if citedby and not (citedby.text.isspace() or citedby.text == ''):
-                self.citedby = int(citedby.text)
-            year = __data.find(class_='gsc_a_h')
-            if year and year.text and not year.text.isspace() and len(year.text)>0:
-                self.bib['year'] = int(year.text)
-        elif self.source == 'scholar':
-            databox = __data.find('div', class_='gs_ri')
-            title = databox.find('h3', class_='gs_rt')
-            if title.find('span', class_='gs_ctu'): # A citation
-                title.span.extract()
-            elif title.find('span', class_='gs_ctc'): # A book or PDF
-                title.span.extract()
-            self.bib['title'] = title.text.strip()
-            if title.find('a'):
-                self.bib['url'] = title.find('a')['href']
-            authorinfo = databox.find('div', class_='gs_a')
-            self.bib['author'] = ' and '.join([i.strip() for i in authorinfo.text.split(' - ')[0].split(',')])
-            if databox.find('div', class_='gs_rs'):
-                self.bib['abstract'] = databox.find('div', class_='gs_rs').text
-                if self.bib['abstract'][0:8].lower() == 'abstract':
-                    self.bib['abstract'] = self.bib['abstract'][9:].strip()
-            lowerlinks = databox.find('div', class_='gs_fl').find_all('a')
-            for link in lowerlinks:
-                if 'Import into BibTeX' in link.text:
-                    self.url_scholarbib = link['href']
-                if 'Cited by' in link.text:
-                    self.citedby = int(re.findall(r'\d+', link.text)[0])
-                    self.id_scholarcitedby = re.findall(_SCHOLARPUBRE, link['href'])[0]
-            if __data.find('div', class_='gs_ggs gs_fl'):
-                self.bib['eprint'] = __data.find('div', class_='gs_ggs gs_fl').a['href']
+        if isinstance(__data, str):
+            self.id_citations = __data
+            self.source = 'citations'
+        else:
+            self.source = pubtype
+            if self.source == 'citations':
+                self.bib['title'] = __data.find('a', class_='gsc_a_at').text
+                self.id_citations = re.findall(_CITATIONPUBRE, __data.find('a', class_='gsc_a_at')['data-href'])[0]
+                citedby = __data.find(class_='gsc_a_ac')
+                if citedby and not (citedby.text.isspace() or citedby.text == ''):
+                    self.citedby = int(citedby.text)
+                year = __data.find(class_='gsc_a_h')
+                if year and year.text and not year.text.isspace() and len(year.text)>0:
+                    self.bib['year'] = int(year.text)
+            elif self.source == 'scholar':
+                databox = __data.find('div', class_='gs_ri')
+                title = databox.find('h3', class_='gs_rt')
+                if title.find('span', class_='gs_ctu'): # A citation
+                    title.span.extract()
+                elif title.find('span', class_='gs_ctc'): # A book or PDF
+                    title.span.extract()
+                self.bib['title'] = title.text.strip()
+                if title.find('a'):
+                    self.bib['url'] = title.find('a')['href']
+                authorinfo = databox.find('div', class_='gs_a')
+                self.bib['author'] = _AUTHOR_CONECTOR.join([i.strip() for i in authorinfo.text.split(' - ')[0].split(',')])
+                if databox.find('div', class_='gs_rs'):
+                    self.bib['abstract'] = databox.find('div', class_='gs_rs').text
+                    if self.bib['abstract'][0:8].lower() == 'abstract':
+                        self.bib['abstract'] = self.bib['abstract'][9:].strip()
+                lowerlinks = databox.find('div', class_='gs_fl').find_all('a')
+                for link in lowerlinks:
+                    if 'Import into BibTeX' in link.text:
+                        self.url_scholarbib = link['href']
+                    if 'Cited by' in link.text:
+                        self.citedby = int(re.findall(r'\d+', link.text)[0])
+                        self.id_scholarcitedby = re.findall(_SCHOLARPUBRE, link['href'])[0]
+                if __data.find('div', class_='gs_ggs gs_fl'):
+                    self.bib['eprint'] = _HOST + __data.find('div', class_='gs_ggs gs_fl').a['href']
         self._filled = False
 
     def fill(self):
@@ -165,6 +170,7 @@ class Publication(object):
         if self.source == 'citations':
             url = _CITATIONPUB.format(self.id_citations)
             soup = _get_soup(_HOST+url)
+            # print(soup.prettify())
             self.bib['title'] = soup.find('div', id='gsc_vcd_title').text
             if soup.find('a', class_='gsc_vcd_title_link'):
                 self.bib['url'] = soup.find('a', class_='gsc_vcd_title_link')['href']
@@ -184,15 +190,20 @@ class Publication(object):
                 elif key == 'Publisher':
                     self.bib['publisher'] = val.text
                 elif key == 'Publication date':
-                    self.bib['year'] = arrow.get(val.text).year
+                    # self.bib['year'] = arrow.get(val.text).year
+                    self.bib['year'] = val.text
                 elif key == 'Description':
                     if val.text[0:8].lower() == 'abstract':
                         val = val.text[9:].strip()
-                    self.bib['abstract'] = val
+                    self.bib['abstract'] = val.text
                 elif key == 'Total citations':
                     self.id_scholarcitedby = re.findall(_SCHOLARPUBRE, val.a['href'])[0]
             if soup.find('div', class_='gsc_vcd_title_ggi'):
-                self.bib['eprint'] = soup.find('div', class_='gsc_vcd_title_ggi').a['href']
+                val_eprint = soup.find('div', class_='gsc_vcd_title_ggi').a['href']
+                if 'http' in val_eprint:
+                    self.bib['eprint'] = val_eprint
+                else:
+                    self.bib['eprint'] = _HOST + val_eprint
             self._filled = True
         elif self.source == 'scholar':
             bibtex = _get_page(self.url_scholarbib)
@@ -260,9 +271,57 @@ class Author(object):
             self.hindex = self.hindex5y = self.i10index = self.i10index5y = 0
 
         # number of citations per year
-        years = [int(y.text) for y in soup.find_all('span', class_='gsc_g_t')]
-        cites = [int(c.text) for c in soup.find_all('span', class_='gsc_g_al')]
-        self.cites_per_year = dict(zip(years, cites))
+        years_items = soup.find_all('span', class_='gsc_g_t')
+        cites_items = soup.find_all('span', class_='gsc_g_al')
+        # Sometimes in a year there is not Cites, so you get empty data, therefore the cites assigned to year is wrong
+        if len(years_items) == len(cites_items): # All years have Cites
+            years = [int(y.text) for y in years_items]
+            cites = [int(c.text) for c in cites_items]
+            self.cites_per_year = dict(zip(years, cites))
+        else:# Some years have Cites
+            len_years = len(years_items)
+            cites = []
+            a_items = soup.find_all('a', class_='gsc_g_a')
+            for i in range(len_years, 0, -1):
+                search_style = 'z-index:%s' % str(i)
+                is_found = False
+                for data in a_items:
+                    if search_style in str(data):
+                        cites.append(int(data.text))
+                        is_found = True
+                        break
+                if not is_found:
+                    cites.append(0)
+
+            years = [int(y.text) for y in years_items]
+            self.cites_per_year = dict(zip(years, cites))
+        if len(self.cites_per_year) == 0: # when there is no graphic to get the data
+            table = soup.find('table', id='gsc_rsb_st')
+            trs = table.find_all('tr')
+            counter, total_cites = 0, 0
+            years = 1970
+            for row in trs:
+                if counter == 0:#Year
+                    array_year = str(row.text).split(' ')
+                    years = array_year[1]
+                elif counter == 1:#Total cites
+                    array_cite = row.find_all('td', class_='gsc_rsb_std')
+                    total_cites = array_cite[0].text
+                elif counter == 2:# indexh
+                    array_index_h = row.find_all('td', class_='gsc_rsb_std')
+                    self.hindex = int(array_index_h[0].text)
+                    self.hindex5y = int(array_index_h[-1].text)
+                elif counter == 3:
+                    array_index_i10 = row.find_all('td', class_='gsc_rsb_std')
+                    self.i10index = int(array_index_i10[0].text)
+                    self.i10index5y = int(array_index_i10[-1].text)
+                counter += 1
+            self.cites_per_year = dict(zip([years], [total_cites]))
+
+        total_citedby = 0
+        for key, data in self.cites_per_year.items():
+            total_citedby += int(data)
+        self.total_citedby = total_citedby
 
         self.publications = list()
         pubstart = 0
@@ -316,6 +375,14 @@ def search_author_custom_url(url):
     URL should be of the form '/citation?q=...'"""
     soup = _get_soup(_HOST+url)
     return _search_citation_soup(soup)
+
+
+def search_author_user_id(id):
+    yield Author(id)
+
+
+def search_author_citacion_id(id):
+    yield Publication(id)
 
 
 if __name__ == "__main__":
