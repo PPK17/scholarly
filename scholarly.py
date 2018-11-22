@@ -178,7 +178,7 @@ class Publication(object):
                 key = item.find(class_='gsc_vcd_field').text
                 val = item.find(class_='gsc_vcd_value')
                 if key == 'Authors':
-                    self.bib['author'] = ' and '.join([i.strip() for i in val.text.split(',')])
+                    self.bib['author'] = _AUTHOR_CONECTOR.join([i.strip() for i in val.text.split(',')])
                 elif key == 'Journal':
                     self.bib['journal'] = val.text
                 elif key == 'Volume':
