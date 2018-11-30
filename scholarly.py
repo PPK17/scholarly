@@ -170,10 +170,13 @@ class Publication(object):
         if self.source == 'citations':
             url = _CITATIONPUB.format(self.id_citations)
             soup = _get_soup(_HOST+url)
-            # print(soup.prettify())
             self.bib['title'] = soup.find('div', id='gsc_vcd_title').text
             if soup.find('a', class_='gsc_vcd_title_link'):
                 self.bib['url'] = soup.find('a', class_='gsc_vcd_title_link')['href']
+            if soup.find('div', class_='gsc_vcd_merged_snippet'):#To get the full name of the project
+                div_full_title = soup.find('div', class_='gsc_vcd_merged_snippet')
+                if div_full_title.find('a'):
+                    self.bib['full_title'] = div_full_title.find('a').text
             for item in soup.find_all('div', class_='gs_scl'):
                 key = item.find(class_='gsc_vcd_field').text
                 val = item.find(class_='gsc_vcd_value')
