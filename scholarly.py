@@ -207,6 +207,32 @@ class Publication(object):
                     self.bib['eprint'] = val_eprint
                 else:
                     self.bib['eprint'] = _HOST + val_eprint
+            if soup.find('div', id='gsc_vcd_graph'):#Citacions per year per publication
+                val_html_graph = soup.find('div', id='gsc_vcd_graph_bars')
+                flag_years = {}
+                array_graph_years = []
+                for it_ in val_html_graph.find_all('a', class_='gsc_vcd_g_a'):
+                    aux_graph_url = str(it_['href']).split('=')
+                    citacion_year = str(aux_graph_url[-1])
+                    total_citacion_year = it_.text
+                    if citacion_year is not None and total_citacion_year is not None:
+                        flag_years[str(citacion_year)] = True
+                        array_graph_years.append(
+                            {
+                                'year': citacion_year,
+                                'citations': total_citacion_year
+                            }
+                        )
+                for it in val_html_graph.find_all('span', class_='gsc_vcd_g_t'):#Check if there is a year without citations
+                    if not str(it.text) in flag_years:
+                        array_graph_years.append(
+                            {
+                                'year': it.text,
+                                'citations': '0'
+                            }
+                        )
+                if len(array_graph_years) > 0:
+                    self.bib['citations_year'] = array_graph_years
             self._filled = True
         elif self.source == 'scholar':
             bibtex = _get_page(self.url_scholarbib)
