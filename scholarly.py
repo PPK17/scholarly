@@ -71,7 +71,7 @@ def _handle_captcha(url):
 def _get_page(pagerequest):
     """Return the data for a page on scholar.google.com"""
     # Note that we include a sleep to avoid overloading the scholar server
-    time.sleep(5+random.uniform(0, 5))
+    time.sleep(3+random.uniform(0, 2))
     resp = _SESSION.get(pagerequest, headers=_HEADERS, cookies=_COOKIES)
     if resp.status_code == 200:
         return resp.text
@@ -324,29 +324,29 @@ class Author(object):
 
             years = [int(y.text) for y in years_items]
             self.cites_per_year = dict(zip(years, cites))
-        if len(self.cites_per_year) == 0: # when there is no graphic to get the data
+        if len(self.cites_per_year) == 0: # when there is no graphic to get the data, but at least there is index h and i10
             table = soup.find('table', id='gsc_rsb_st')
-            trs = table.find_all('tr')
-            counter, total_cites = 0, 0
-            years = 1970
-            for row in trs:
-                if counter == 0:#Year
-                    array_year = str(row.text).split(' ')
-                    years = array_year[1]
-                elif counter == 1:#Total cites
-                    array_cite = row.find_all('td', class_='gsc_rsb_std')
-                    total_cites = array_cite[0].text
-                elif counter == 2:# indexh
-                    array_index_h = row.find_all('td', class_='gsc_rsb_std')
-                    self.hindex = int(array_index_h[0].text)
-                    self.hindex5y = int(array_index_h[-1].text)
-                elif counter == 3:
-                    array_index_i10 = row.find_all('td', class_='gsc_rsb_std')
-                    self.i10index = int(array_index_i10[0].text)
-                    self.i10index5y = int(array_index_i10[-1].text)
-                counter += 1
-            self.cites_per_year = dict(zip([years], [total_cites]))
-
+            if table is not None:
+                trs = table.find_all('tr')
+                counter, total_cites = 0, 0
+                years = 1970
+                for row in trs:
+                    if counter == 0:#Year
+                        array_year = str(row.text).split(' ')
+                        years = array_year[1]
+                    elif counter == 1:#Total cites
+                        array_cite = row.find_all('td', class_='gsc_rsb_std')
+                        total_cites = array_cite[0].text
+                    elif counter == 2:# indexh
+                        array_index_h = row.find_all('td', class_='gsc_rsb_std')
+                        self.hindex = int(array_index_h[0].text)
+                        self.hindex5y = int(array_index_h[-1].text)
+                    elif counter == 3:
+                        array_index_i10 = row.find_all('td', class_='gsc_rsb_std')
+                        self.i10index = int(array_index_i10[0].text)
+                        self.i10index5y = int(array_index_i10[-1].text)
+                    counter += 1
+                self.cites_per_year = dict(zip([years], [total_cites]))
         total_citedby = 0
         for key, data in self.cites_per_year.items():
             total_citedby += int(data)
