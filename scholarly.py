@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#Version PPK17, V 1.0.0.1
 
 """scholarly.py"""
 
