@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#Version PPK17, V 1.0.0.1
 
 """scholarly.py"""
 
@@ -72,12 +71,13 @@ def _handle_captcha(url):
 def _get_page(pagerequest):
     """Return the data for a page on scholar.google.com"""
     # Note that we include a sleep to avoid overloading the scholar server
-    time.sleep(5+random.uniform(0, 5))
-    print(pagerequest)
-    proxies = {
-        'https': 'https://181.189.221.209:57656',
-    }
-    resp = _SESSION.get(pagerequest, headers=_HEADERS, cookies=_COOKIES, proxies=proxies)
+    time.sleep(3+random.uniform(0, 2))
+    # print(pagerequest)
+    # proxies = {
+    #     'https': 'https://181.189.221.209:57656',
+    # }
+    resp = _SESSION.get(pagerequest, headers=_HEADERS, cookies=_COOKIES)
+
     if resp.status_code == 200:
         return resp.text
     if resp.status_code == 503:
@@ -135,8 +135,10 @@ class Publication(object):
         else:
             self.source = pubtype
             if self.source == 'citations':
-                self.bib['title'] = __data.find('a', class_='gsc_a_at').text
-                self.id_citations = re.findall(_CITATIONPUBRE, __data.find('a', class_='gsc_a_at')['data-href'])[0]
+                if __data.find('a', class_='gsc_a_at'):
+                    self.bib['title'] = __data.find('a', class_='gsc_a_at').text
+                if __data.find('a', class_='gsc_a_at'):
+                    self.id_citations = re.findall(_CITATIONPUBRE, __data.find('a', class_='gsc_a_at')['data-href'])[0]
                 citedby = __data.find(class_='gsc_a_ac')
                 if citedby and not (citedby.text.isspace() or citedby.text == ''):
                     self.citedby = int(citedby.text)
