@@ -9,7 +9,7 @@ def readfile(*paths):
 setup(
     name = 'scholarly',
     py_modules = ['scholarly'],
-    version = '0.2.3',
+    version = '0.2.3.1',
     description = 'Simple access to Google Scholar authors and citations',
     long_description=(readfile('README.rst')),
     license='Unlicense',
